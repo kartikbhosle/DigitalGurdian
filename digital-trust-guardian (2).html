@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digital Trust Guardian - Senior Citizen Safety Platform</title>
+
+<style>
+  /* ============================================================
+     1. DESIGN TOKENS
+     Two themes controlled by [data-theme] on <html>:
+     - default  : deep navy background, cream/white cards, gold accent
+     - "high"   : pure black/white/yellow maximum-contrast mode
+     All spacing/type uses rem, so the A+/A- control scales everything.
+  ============================================================ */
+  :root{
+    --bg:            #0B1F3F;   /* deep navy page background        */
+    --bg-soft:       #12294F;   /* slightly lighter navy panels     */
+    --card-bg:       #FFF8EC;   /* warm cream card surface          */
+    --card-bg-alt:   #FFFFFF;   /* pure white card surface          */
+    --text-on-navy:  #FFFFFF;   /* text sitting on navy             */
+    --text-on-card:  #0B1F3F;   /* text sitting on cream/white      */
+    --muted-on-navy: #C9D4E8;   /* softer text on navy              */
+    --accent:        #D9AE4E;   /* guardian gold - trust/signature  */
+    --accent-dark:   #B98F32;
+    --safe:          #1E8A5D;   /* green - safe / correct           */
+    --safe-bg:       #E4F5EC;
+    --danger:        #C93B3B;   /* red - scam / incorrect           */
+    --danger-bg:     #FBE6E6;
+    --warning-bg:    #FFF4DC;   /* amber - uncertain / medium       */
+    --border-soft:   rgba(255,255,255,0.16);
+    --shadow:        0 10px 30px rgba(0,0,0,0.28);
+    --radius-lg:     1.25rem;
+    --radius-md:     0.85rem;
+    --focus-ring:    3px solid var(--accent);
+  }
+
+  /* High-contrast override theme */
+  html[data-theme="high"]{
+    --bg:            #000000;
+    --bg-soft:       #000000;
+    --card-bg:       #000000;
+    --card-bg-alt:   #000000;
+    --text-on-navy:  #FFFFFF;
+    --text-on-card:  #FFFFFF;
+    --muted-on-navy: #FFFFFF;
+    --accent:        #FFD400;
+    --accent-dark:   #FFD400;
+    --safe:          #00E676;
+    --safe-bg:       #001a0d;
+    --danger:        #FF5252;
+    --danger-bg:     #200000;
+    --warning-bg:    #221a00;
+    --border-soft:   #FFFFFF;
+    --shadow:        none;
+    --focus-ring:    3px solid #FFD400;
+  }
+
+  /* ============================================================
+     2. BASE / RESET
+     Root font-size is the single lever the A+/A- buttons move.
+     1rem = 20px by default, satisfying the "min 20px body text" rule.
+  ============================================================ */
+  *, *::before, *::after{ box-sizing: border-box; }
+
+  html{
+    font-size: 20px; /* baseline unit - JS only ever increases this */
+  }
+
+  body{
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-on-navy);
+    font-family: Verdana, "Segoe UI", Arial, sans-serif; /* highly legible, no external font dependency */
+    line-height: 1.6;
+    font-size: 1rem;
+  }
+
+  h1, h2, h3{
+    font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
+    line-height: 1.25;
+    margin: 0 0 0.6em 0;
+  }
+
+  img, svg{ max-width: 100%; display: block; }
+
+  a{ color: inherit; }
+
+  /* Respect users who prefer reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    *{ transition: none !important; animation: none !important; }
+  }
+
+  /* Visible, generous focus state everywhere - critical for keyboard users */
+  a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible{
+    outline: var(--focus-ring);
+    outline-offset: 3px;
+  }
+
+  /* Skip link for screen-reader / keyboard users */
+  .skip-link{
+    position: absolute;
+    left: -999px;
+    top: 0;
+    background: var(--accent);
+    color: var(--text-on-card);
+    padding: 0.75rem 1.25rem;
+    font-weight: bold;
+    border-radius: 0 0 var(--radius-md) 0;
+    z-index: 100;
+  }
+  .skip-link:focus{ left: 0; }
+
+  .container{
+    max-width: 56rem;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+  }
+
+  /* ============================================================
+     3. TOP NAVIGATION - accessibility controls live here
+  ============================================================ */
+  .topnav{
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--bg-soft);
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  .topnav-inner{
+    max-width: 56rem;
+    margin: 0 auto;
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .brand{
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: bold;
+    font-size: 1.15rem;
+  }
+  .brand svg{ width: 2rem; height: 2.4rem; }
+
+  .a11y-controls{
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .a11y-group{
+    display: flex;
+    align-items: stretch;
+    border: 2px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  .a11y-btn{
+    background: transparent;
+    color: var(--text-on-navy);
+    border: none;
+    min-height: 3rem;          /* >= 60px at baseline root size */
+    min-width: 3rem;
+    padding: 0 0.9rem;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .a11y-group .a11y-btn + .a11y-btn{ border-left: 2px solid var(--border-soft); }
+  .a11y-btn:hover{ background: rgba(255,255,255,0.12); }
+
+  .hc-toggle{
+    background: transparent;
+    border: 2px solid var(--border-soft);
+    color: var(--text-on-navy);
+    min-height: 3rem;
+    padding: 0 1rem;
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .hc-toggle[aria-pressed="true"]{
+    background: var(--accent);
+    color: var(--text-on-card);
+    border-color: var(--accent);
+  }
+
+  /* ============================================================
+     4. HERO
+  ============================================================ */
+  .hero{
+    padding: 3rem 0 2.5rem;
+    text-align: center;
+  }
+
+  .hero-shield{
+    width: 5.5rem;
+    height: 6.4rem;
+    margin: 0 auto 1rem;
+  }
+
+  .hero h1{
+    font-size: 2.1rem;
+    margin-bottom: 0.4em;
+  }
+
+  .hero .tagline{
+    font-size: 1.25rem;
+    color: var(--muted-on-navy);
+    max-width: 34rem;
+    margin: 0 auto 1.75rem;
+  }
+
+  /* Big touch-friendly button base, reused across the page */
+  .btn{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    min-height: 3.75rem;       /* well over the 60px requirement */
+    padding: 0.75rem 1.75rem;
+    font-size: 1.15rem;
+    font-weight: bold;
+    border-radius: var(--radius-md);
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    line-height: 1.2;
+  }
+  .btn:hover{ filter: brightness(1.08); }
+  .btn:active{ filter: brightness(0.95); }
+  .btn:disabled{ opacity: 0.65; cursor: not-allowed; }
+
+  .btn-primary{ background: var(--accent); color: var(--text-on-card); }
+  .btn-safe{ background: var(--safe); color: #ffffff; }
+  .btn-ai{ background: #3E63DD; color: #ffffff; }
+  html[data-theme="high"] .btn-ai{ background: var(--accent); color: #000000; }
+  .btn-outline{
+    background: transparent;
+    color: var(--text-on-card);
+    border: 2px solid #C9C0AA;
+  }
+  html[data-theme="high"] .btn-outline{ color: var(--text-on-navy); border-color: var(--border-soft); }
+  .btn-block{ width: 100%; }
+
+  .sos-btn{
+    background: var(--danger);
+    color: #ffffff;
+    font-size: 1.3rem;
+    padding: 1rem 2rem;
+    box-shadow: var(--shadow);
+  }
+
+  /* Floating SOS button - always reachable, one tap from anywhere */
+  .sos-float{
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 60;
+    background: var(--danger);
+    color: #fff;
+    border-radius: 999px;
+    min-height: 3.75rem;
+    padding: 0 1.4rem;
+    font-size: 1.05rem;
+    box-shadow: var(--shadow);
+  }
+
+  /* ============================================================
+     5. SECTION / CARD SHELL
+  ============================================================ */
+  main{ padding-bottom: 4rem; }
+
+  .section{ padding: 1.5rem 0; }
+
+  .section-title{
+    font-size: 1.6rem;
+    margin-bottom: 0.25em;
+  }
+  .section-sub{
+    color: var(--muted-on-navy);
+    font-size: 1.05rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .card{
+    background: var(--card-bg);
+    color: var(--text-on-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: 1.75rem;
+    border: 2px solid transparent;
+  }
+  html[data-theme="high"] .card{ border-color: var(--border-soft); }
+
+  .card + .card{ margin-top: 1.5rem; }
+
+  label{ font-weight: bold; display: block; margin-bottom: 0.5rem; }
+
+  textarea{
+    width: 100%;
+    min-height: 8rem;
+    font-size: 1.05rem;
+    font-family: inherit;
+    padding: 0.9rem;
+    border-radius: var(--radius-md);
+    border: 2px solid #C9C0AA;
+    resize: vertical;
+    color: var(--text-on-card);
+    background: var(--card-bg-alt);
+  }
+  html[data-theme="high"] textarea{ border-color: var(--border-soft); color:#fff; }
+
+  /* Reusable single-line input (used by the password checker) */
+  .input-row{ display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: stretch; }
+  .text-input{
+    flex: 1 1 12rem;
+    min-height: 3.75rem;
+    font-size: 1.05rem;
+    font-family: inherit;
+    padding: 0 1rem;
+    border-radius: var(--radius-md);
+    border: 2px solid #C9C0AA;
+    color: var(--text-on-card);
+    background: var(--card-bg-alt);
+  }
+  html[data-theme="high"] .text-input{ border-color: var(--border-soft); color:#fff; }
+
+  .field-hint{
+    font-size: 0.95rem;
+    color: #5A5546;
+    margin-top: 0.4rem;
+  }
+  html[data-theme="high"] .field-hint{ color: var(--muted-on-navy); }
+
+  /* Result badge / panel shared by the scam checker, AI check, and password checker */
+  .result{
+    margin-top: 1.25rem;
+    display: none;
+  }
+  .result.visible{ display: block; }
+
+  .badge{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding: 0.6rem 1.1rem;
+    border-radius: 999px;
+    margin-bottom: 0.85rem;
+  }
+  .badge-danger{ background: var(--danger-bg); color: var(--danger); border: 2px solid var(--danger); }
+  .badge-safe{ background: var(--safe-bg); color: var(--safe); border: 2px solid var(--safe); }
+  .badge-warning{ background: var(--warning-bg); color: var(--accent-dark); border: 2px solid var(--accent-dark); }
+
+  .reasons{ margin: 0.5rem 0 0; padding-left: 1.3rem; }
+  .reasons li{ margin-bottom: 0.4rem; }
+
+  .action-row{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+  }
+
+  /* Horizontal strength bar for the password checker */
+  .strength-bar-track{
+    background: #E4DCC8;
+    border-radius: 999px;
+    height: 1.25rem;
+    overflow: hidden;
+    margin: 0.75rem 0 1rem;
+  }
+  html[data-theme="high"] .strength-bar-track{ background: #333333; }
+  .strength-bar-fill{
+    height: 100%;
+    border-radius: 999px;
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+
+  /* ============================================================
+     5b. READ-ALOUD ICON BUTTON
+     Auto-attached by JS to every plain paragraph, tip, and
+     cross-question answer on the page, so any single piece of
+     writing can be listened to on its own, not just the results
+     from the interactive tools (which keep their own dedicated
+     "Read Aloud" buttons).
+  ============================================================ */
+  .speak-btn{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    background: transparent;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .speak-btn:hover{ background: rgba(217,174,78,0.18); }
+  html[data-theme="high"] .speak-btn{ border-color: #FFD400; }
+  html[data-theme="high"] .speak-btn:hover{ background: rgba(255,212,0,0.18); }
+
+  /* ============================================================
+     6. SAFETY METER (shield-shaped liquid gauge - signature element)
+  ============================================================ */
+  .meter-layout{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    align-items: center;
+  }
+  .meter-visual{ flex: 0 0 auto; text-align: center; width: 9rem; }
+  .meter-visual svg{ width: 9rem; height: 10.5rem; }
+  .meter-score{
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-top: 0.5rem;
+  }
+  .meter-score span{ font-size: 1rem; font-weight: normal; color: #5A5546; }
+  html[data-theme="high"] .meter-score span{ color: var(--muted-on-navy); }
+
+  .checklist{ flex: 1 1 16rem; list-style: none; margin: 0; padding: 0; }
+  .checklist li{
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #E4DCC8;
+    font-size: 1.05rem;
+  }
+  html[data-theme="high"] .checklist li{ border-color: var(--border-soft); }
+  .checklist li:last-child{ border-bottom: none; }
+  .checklist input[type="checkbox"]{
+    width: 1.6rem;
+    height: 1.6rem;
+    flex-shrink: 0;
+    accent-color: var(--safe);
+    margin-top: 0.1rem;
+  }
+
+  /* ============================================================
+     7. DIGITAL SAFETY TIPS + AWARENESS FACTS
+  ============================================================ */
+  .facts-list{ margin: 0; padding-left: 1.4rem; }
+  .facts-list li{ margin-bottom: 0.65rem; font-size: 1.05rem; }
+
+  .tips-heading{ font-size: 1.15rem; margin-bottom: 0.6rem; }
+  .tips-heading + .facts-list{ margin-bottom: 0; }
+  h3.tips-heading:not(:first-child){ margin-top: 1.5rem; }
+
+  .cross-heading{
+    font-size: 1.15rem;
+    font-weight: bold;
+    margin: 1.5rem 0 0.75rem;
+  }
+
+  .cross-questions{
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .cross-item{
+    border: 2px solid #E4DCC8;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  html[data-theme="high"] .cross-item{ border-color: var(--border-soft); }
+
+  /* <summary> is the tap target - native, keyboard + screen-reader friendly */
+  .cross-item summary{
+    cursor: pointer;
+    list-style: none;
+    padding: 1rem 1.1rem;
+    min-height: 3rem;          /* >= 60px touch target at baseline */
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-weight: bold;
+    font-size: 1.08rem;
+  }
+  .cross-item summary::-webkit-details-marker{ display:none; }
+  .cross-item summary::before{
+    content: "\2753";  /* red question mark, becomes checkmark when open */
+    flex-shrink: 0;
+  }
+  .cross-item[open] summary::before{ content: "\2705"; }
+
+  .cross-item p{
+    margin: 0;
+    padding: 0 1.1rem 1.1rem 2.7rem;
+    font-size: 1.02rem;
+    color: #3D3826;
+  }
+  html[data-theme="high"] .cross-item p{ color: var(--text-on-card); }
+
+  /* ============================================================
+     8. QUIZ
+  ============================================================ */
+  .quiz-progress{
+    font-size: 1rem;
+    font-weight: bold;
+    color: #5A5546;
+    margin-bottom: 0.5rem;
+  }
+  html[data-theme="high"] .quiz-progress{ color: var(--muted-on-navy); }
+
+  .quiz-question{ font-size: 1.3rem; font-weight: bold; margin-bottom: 1rem; }
+
+  .quiz-buttons{ display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1.25rem; }
+  .quiz-buttons .btn{ flex: 1 1 8rem; }
+
+  .quiz-feedback{
+    margin-top: 1.25rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-md);
+    display: none;
+  }
+  .quiz-feedback.visible{ display: block; }
+  .quiz-feedback.correct{ background: var(--safe-bg); border: 2px solid var(--safe); color: var(--safe); }
+  .quiz-feedback.incorrect{ background: var(--danger-bg); border: 2px solid var(--danger); color: var(--danger); }
+  .quiz-feedback p{ color: var(--text-on-card); margin: 0.4rem 0 0; font-weight: normal; }
+
+  .quiz-summary{ display:none; text-align:center; }
+  .quiz-summary.visible{ display:block; }
+  .quiz-summary .big-score{ font-size: 2rem; font-weight: bold; color: var(--accent-dark); }
+
+  /* ============================================================
+     9. FOOTER
+  ============================================================ */
+  footer{
+    background: var(--bg-soft);
+    border-top: 1px solid var(--border-soft);
+    padding: 2rem 0 6rem; /* extra bottom padding so floating SOS never overlaps content */
+    text-align: center;
+    color: var(--muted-on-navy);
+    font-size: 0.95rem;
+  }
+  footer strong{ color: var(--text-on-navy); }
+
+  /* ============================================================
+     10. RESPONSIVE
+  ============================================================ */
+  @media (max-width: 40rem){
+    .hero h1{ font-size: 1.7rem; }
+    .meter-layout{ flex-direction: column; align-items: stretch; }
+    .quiz-buttons .btn{ flex: 1 1 100%; }
+  }
+</style>
+</head>
+<body>
+
+<a href="#main" class="skip-link">Skip to main content</a>
+
+<!-- ============================================================
+     TOP NAVIGATION
+============================================================ -->
+<header class="topnav">
+  <div class="topnav-inner">
+    <div class="brand">
+      <!-- Small shield logo, reused as the site's signature icon -->
+      <svg viewBox="0 0 100 120" aria-hidden="true">
+        <path d="M50 4 L92 20 L92 56 C92 84 74 104 50 116 C26 104 8 84 8 56 L8 20 Z"
+              fill="none" stroke="var(--accent)" stroke-width="7"/>
+      </svg>
+      <span>Digital Trust Guardian</span>
+    </div>
+
+    <div class="a11y-controls">
+      <div class="a11y-group" role="group" aria-label="Text size controls">
+        <button type="button" class="a11y-btn" id="fontDecrease" aria-label="Decrease text size">A-</button>
+        <button type="button" class="a11y-btn" id="fontIncrease" aria-label="Increase text size">A+</button>
+      </div>
+      <button type="button" class="hc-toggle" id="contrastToggle" aria-pressed="false">
+        High Contrast
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ============================================================
+       HERO
+  ============================================================ -->
+  <section class="hero">
+    <div class="container">
+      <svg class="hero-shield" viewBox="0 0 100 120" aria-hidden="true">
+        <path d="M50 4 L92 20 L92 56 C92 84 74 104 50 116 C26 104 8 84 8 56 L8 20 Z"
+              fill="var(--accent)" opacity="0.15"/>
+        <path d="M50 4 L92 20 L92 56 C92 84 74 104 50 116 C26 104 8 84 8 56 L8 20 Z"
+              fill="none" stroke="var(--accent)" stroke-width="6"/>
+        <path d="M32 58 L45 72 L70 42" fill="none" stroke="var(--accent)" stroke-width="8"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+
+      <h1>Digital Trust Guardian</h1>
+      <p class="tagline">Your Safe Guide to the Digital World</p>
+
+      <a href="tel:1930" class="btn sos-btn">
+        📞 SOS - Call Cybercrime Helpline (1930)
+      </a>
+    </div>
+  </section>
+
+  <div class="container">
+
+    <!-- ============================================================
+         1. SCAM SMS & URL DETECTOR
+         Catches small spelling mistakes / lookalike spellings, and
+         offers an optional, on-device "AI Deep Scan" second opinion
+         for messages and links - no outside AI service required.
+    ============================================================ -->
+    <section class="section" id="detector">
+      <h2 class="section-title">🔍 Scam Message Checker</h2>
+      <p class="section-sub">Paste any SMS, WhatsApp message, or email below. We'll check it for scam warning signs - even if a word is slightly misspelled.</p>
+
+      <div class="card">
+        <label for="messageInput">Paste the message here</label>
+        <textarea id="messageInput" placeholder="Example: Your bank account will be SUSPENDED. Share your OTP now to verify KYC..."></textarea>
+        <p class="field-hint">We only check the words on this page - nothing is sent anywhere or saved, unless you choose "Verify with AI" below.</p>
+
+        <div class="action-row">
+          <button type="button" class="btn btn-primary" id="checkBtn">✅ Check Safety</button>
+          <button type="button" class="btn btn-ai" id="aiCheckBtn">🤖 AI Deep Scan</button>
+          <button type="button" class="btn btn-outline" id="readAloudBtn">🔊 Read Out Loud</button>
+        </div>
+        <p class="field-hint">"AI Deep Scan" runs a more detailed, built-in analysis right here on this device, drawing on common AI scam-detection patterns - no internet connection, account, or outside AI service required. It works anytime, on any computer or phone, wherever this page is opened. "Check Safety" above is the quick version of the same idea.</p>
+
+        <!-- Instant offline result - announced automatically to screen readers -->
+        <div class="result" id="resultBox" aria-live="polite">
+          <span class="badge" id="resultBadge"></span>
+          <ul class="reasons" id="resultReasons"></ul>
+        </div>
+
+        <!-- AI second-opinion result -->
+        <div class="result" id="aiResultBox" aria-live="polite">
+          <h3 style="margin:1.25rem 0 0.5rem; font-size:1.1rem;">🤖 AI Deep Scan Result</h3>
+          <span class="badge" id="aiBadge"></span>
+          <ul class="reasons" id="aiReasons"></ul>
+          <p id="aiAdvice" style="font-weight:bold; margin-top:0.5rem;"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         2. PASSWORD HEALTH CHECKER
+         Fully on-device - nothing typed here is ever saved or sent.
+    ============================================================ -->
+    <section class="section" id="password">
+      <h2 class="section-title">🔑 Password Health Checker</h2>
+      <p class="section-sub">Check how strong a password is, right on this page. Nothing you type here is ever saved or sent anywhere.</p>
+
+      <div class="card">
+        <label for="passwordInput">Type or paste a password to check</label>
+        <div class="input-row">
+          <input type="password" id="passwordInput" class="text-input" autocomplete="off">
+          <button type="button" class="btn btn-outline" id="togglePasswordBtn" aria-pressed="false">👁️ Show</button>
+        </div>
+        <p class="field-hint">This check happens only on this device - your password is never saved, sent, or shared with anyone, including us.</p>
+
+        <div class="action-row">
+          <button type="button" class="btn btn-primary" id="checkPasswordBtn">🔍 Check Password Health</button>
+          <button type="button" class="btn btn-outline" id="passwordReadAloudBtn">🔊 Read Result Aloud</button>
+        </div>
+
+        <div class="result" id="passwordResultBox" aria-live="polite">
+          <span class="badge" id="passwordBadge"></span>
+          <div class="strength-bar-track"><div class="strength-bar-fill" id="passwordBarFill"></div></div>
+          <ul class="reasons" id="passwordTips"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         3. DIGITAL SAFETY METER (checklist)
+    ============================================================ -->
+    <section class="section" id="meter">
+      <h2 class="section-title">🛡️ Your Digital Safety Score</h2>
+      <p class="section-sub">Tick off the habits you already follow. Your shield fills up as your score improves.</p>
+
+      <div class="card">
+        <div class="meter-layout">
+          <div class="meter-visual">
+            <svg viewBox="0 0 100 120" role="img" aria-labelledby="meterTitle">
+              <title id="meterTitle">Safety score shield gauge</title>
+              <defs>
+                <clipPath id="shieldClip">
+                  <path d="M50 4 L92 20 L92 56 C92 84 74 104 50 116 C26 104 8 84 8 56 L8 20 Z"/>
+                </clipPath>
+              </defs>
+              <!-- background of shield -->
+              <path d="M50 4 L92 20 L92 56 C92 84 74 104 50 116 C26 104 8 84 8 56 L8 20 Z"
+                    fill="#E4DCC8"/>
+              <!-- liquid fill, height/color updated by JS -->
+              <rect id="meterFill" x="0" y="120" width="100" height="0" fill="var(--safe)" clip-path="url(#shieldClip)"/>
+              <!-- crisp outline on top -->
+              <path d="M50 4 L92 20 L92 56 C92 84 74 104 50 116 C26 104 8 84 8 56 L8 20 Z"
+                    fill="none" stroke="var(--text-on-navy)" stroke-width="4"/>
+            </svg>
+            <p class="meter-score" id="scoreText" aria-live="polite">0<span>/100</span></p>
+          </div>
+
+          <ul class="checklist" id="checklist">
+            <li>
+              <input type="checkbox" id="chk1" data-points="25">
+              <label for="chk1" style="margin:0; font-weight:normal;">I never share my OTP, PIN or password with anyone, even someone claiming to be from my bank</label>
+            </li>
+            <li>
+              <input type="checkbox" id="chk2" data-points="25">
+              <label for="chk2" style="margin:0; font-weight:normal;">I hang up and call the bank's official number myself if I feel unsure about a call</label>
+            </li>
+            <li>
+              <input type="checkbox" id="chk3" data-points="25">
+              <label for="chk3" style="margin:0; font-weight:normal;">I have saved important helpline numbers, including 1930, in my phone</label>
+            </li>
+            <li>
+              <input type="checkbox" id="chk4" data-points="25">
+              <label for="chk4" style="margin:0; font-weight:normal;">I always ask a family member before clicking a link or making an online payment</label>
+            </li>
+          </ul>
+        </div>
+
+        <div class="action-row">
+          <button type="button" class="btn btn-outline" id="checklistReadAloudBtn">🔊 Read Checklist Aloud</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         4. DIGITAL SAFETY TIPS
+    ============================================================ -->
+    <section class="section" id="tips">
+      <h2 class="section-title">💡 Digital Safety Tips</h2>
+      <p class="section-sub">Simple daily habits that keep your phone, your money, and your personal details safer.</p>
+
+      <div class="card">
+        <h3 class="tips-heading">📱 Phone & App Safety</h3>
+        <ul class="facts-list">
+          <li>Keep your phone's software updated - updates often fix security problems.</li>
+          <li>Set a screen lock (PIN, pattern, or fingerprint) so no one can use your phone if it's lost.</li>
+          <li>Only download apps from the official Play Store or App Store, never from links in messages.</li>
+        </ul>
+
+        <h3 class="tips-heading">💳 Banking & Money Safety</h3>
+        <ul class="facts-list">
+          <li>Check your bank statement regularly for transactions you don't recognise.</li>
+          <li>Turn on SMS or app alerts for every transaction on your account.</li>
+          <li>Never make a payment because someone on a call is pressuring you to "act now."</li>
+        </ul>
+
+        <h3 class="tips-heading">🌐 Internet & Social Media Safety</h3>
+        <ul class="facts-list">
+          <li>Be careful what personal details (birthday, address, travel plans) you post publicly.</li>
+          <li>Don't accept friend requests from people you don't know, even if they know your friends.</li>
+          <li>If a website looks unfamiliar or asks for too much information, close it and search for the official site yourself.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         5. AWARENESS: QUICK FACTS + CROSS-QUESTIONS
+    ============================================================ -->
+    <section class="section" id="awareness">
+      <h2 class="section-title">📖 Know This Before You Trust Anyone Online</h2>
+      <p class="section-sub">Simple facts and questions to keep in mind - especially useful if you're still getting comfortable with phones, apps, or online banking.</p>
+
+      <div class="card">
+        <h3 style="margin-bottom:0.6rem; font-size:1.15rem;">Quick Safety Facts</h3>
+        <ul class="facts-list">
+          <li>Banks, RBI, and government offices never ask for your OTP, PIN, or password - not on a call, SMS, WhatsApp, or email.</li>
+          <li>No genuine agency will threaten instant arrest or "block your account" over a phone call.</li>
+          <li>You cannot win a lottery or prize for a contest you never entered.</li>
+          <li>Real support staff never ask you to install a remote-access app on your phone or computer.</li>
+          <li>It is always okay to hang up, take your time, and call back on a number you trust.</li>
+        </ul>
+
+        <h3 class="cross-heading">Cross-Questions To Ask Yourself</h3>
+        <p class="section-sub" style="margin-bottom:1rem;">Tap a question to see why it matters.</p>
+
+        <div class="cross-questions">
+          <details class="cross-item">
+            <summary>Did I make this call, or did someone call me?</summary>
+            <p>If they called you out of the blue, be extra cautious. Hang up and call the official number yourself to confirm before doing anything.</p>
+          </details>
+
+          <details class="cross-item">
+            <summary>Am I being rushed to decide right now?</summary>
+            <p>Scammers create urgency on purpose so you don't have time to think. A genuine matter can always wait a few minutes while you check.</p>
+          </details>
+
+          <details class="cross-item">
+            <summary>Would my bank or office really ask for this over the phone?</summary>
+            <p>No real bank, government office, or company asks for your OTP, PIN, or password this way. If they do, it is a scam.</p>
+          </details>
+
+          <details class="cross-item">
+            <summary>Have I asked a trusted family member or friend first?</summary>
+            <p>A second opinion catches most scams. Never feel embarrassed to ask before you act - it takes one phone call.</p>
+          </details>
+
+          <details class="cross-item">
+            <summary>Can I check this myself, independently?</summary>
+            <p>Look up the official number or website yourself, instead of using the one given in the message or call.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         6. 1-MINUTE SAFETY QUIZ (answers now read aloud automatically)
+    ============================================================ -->
+    <section class="section" id="quiz">
+      <h2 class="section-title">📝 1-Minute Safety Quiz</h2>
+      <p class="section-sub">Answer True or False. There is no wrong time to learn something new.</p>
+
+      <div class="card">
+        <div id="quizActive">
+          <p class="quiz-progress" id="quizProgress">Question 1 of 9</p>
+          <p class="quiz-question" id="quizQuestion"></p>
+
+          <div class="action-row" style="margin-top:0;">
+            <button type="button" class="btn btn-outline" id="quizReadAloudBtn">🔊 Read Aloud</button>
+          </div>
+
+          <div class="quiz-buttons">
+            <button type="button" class="btn btn-safe" id="trueBtn">✔️ True</button>
+            <button type="button" class="btn" style="background:var(--danger); color:#fff;" id="falseBtn">✖️ False</button>
+          </div>
+
+          <div class="quiz-feedback" id="quizFeedback" aria-live="polite">
+            <strong id="feedbackHeading"></strong>
+            <p id="feedbackExplanation"></p>
+            <div class="action-row">
+              <button type="button" class="btn btn-outline" id="answerReadAloudBtn">🔊 Read Answer Aloud</button>
+              <button type="button" class="btn btn-primary" id="nextQuestionBtn">Next Question →</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="quiz-summary" id="quizSummary" aria-live="polite">
+          <p class="section-title" style="margin-bottom:0.25rem;">Quiz Complete! 🎉</p>
+          <p class="big-score" id="finalScore"></p>
+          <div class="action-row" style="justify-content:center;">
+            <button type="button" class="btn btn-primary" id="restartQuizBtn">Try Again</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- Always-reachable floating SOS button -->
+<a href="tel:1930" class="btn sos-float" aria-label="Emergency: Call Cybercrime Helpline 1930">
+  📞 1930
+</a>
+
+<footer>
+  <div class="container">
+    <p><strong>In an emergency, call 1930</strong> (National Cyber Crime Helpline) or your nearest police station.</p>
+    <p>Digital Trust Guardian gives general safety guidance and does not replace advice from your bank or the police.</p>
+  </div>
+</footer>
+
+<script>
+/* ================================================================
+   DIGITAL TRUST GUARDIAN - APPLICATION LOGIC
+   Organised into: shared helpers, then independent feature modules.
+================================================================ */
+
+/* ----------------------------------------------------------------
+   SHARED HELPERS
+---------------------------------------------------------------- */
+
+// Reads any text aloud, slowly and clearly
+function speakText(text){
+  if (!('speechSynthesis' in window)){
+    alert('Sorry, this device does not support reading text aloud.');
+    return;
+  }
+  window.speechSynthesis.cancel(); // stop anything already speaking
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.8;   // comfortable, slower pace
+  utterance.pitch = 1;
+  utterance.lang = 'en-IN';
+  window.speechSynthesis.speak(utterance);
+}
+
+// Shared red/amber/green grading used by the safety meter and password checker
+function scoreColor(score){
+  if (score < 40) return 'var(--danger)';
+  if (score < 70) return '#D9A02A';
+  return 'var(--safe)';
+}
+
+/* ----------------------------------------------------------------
+   A) ACCESSIBILITY CONTROLS: font size + high contrast
+---------------------------------------------------------------- */
+(function accessibilityControls(){
+  const MIN_FONT = 20;   // never go below the "minimum 20px body text" rule
+  const MAX_FONT = 32;
+  const STEP = 2;
+  let currentFont = MIN_FONT;
+
+  const root = document.documentElement;
+  const decreaseBtn = document.getElementById('fontDecrease');
+  const increaseBtn = document.getElementById('fontIncrease');
+  const contrastBtn = document.getElementById('contrastToggle');
+
+  function applyFont(){
+    root.style.fontSize = currentFont + 'px';
+  }
+
+  decreaseBtn.addEventListener('click', function(){
+    currentFont = Math.max(MIN_FONT, currentFont - STEP);
+    applyFont();
+  });
+
+  increaseBtn.addEventListener('click', function(){
+    currentFont = Math.min(MAX_FONT, currentFont + STEP);
+    applyFont();
+  });
+
+  contrastBtn.addEventListener('click', function(){
+    const isHigh = root.getAttribute('data-theme') === 'high';
+    root.setAttribute('data-theme', isHigh ? 'default' : 'high');
+    contrastBtn.setAttribute('aria-pressed', String(!isHigh));
+  });
+})();
+
+/* ----------------------------------------------------------------
+   B) SCAM SMS & URL DETECTOR (with small-mistake / typo tolerance)
+---------------------------------------------------------------- */
+(function scamDetector(){
+  // Plain-English scam keyword dictionary - exact phrase matches
+  const KEYWORDS = [
+    { term: 'otp',           explain: 'Asks for your OTP - banks and government offices NEVER ask for this over call, SMS, or email.' },
+    { term: 'urgent',        explain: 'Uses the word "urgent" to rush you into acting before you can think it through.' },
+    { term: 'suspend',       explain: 'Threatens that your account or card will be suspended or blocked.' },
+    { term: 'lottery',       explain: 'Claims you have won a lottery or prize you never entered.' },
+    { term: 'click link',    explain: 'Asks you to click a link to "resolve" a problem - a very common trick.' },
+    { term: 'click the link',explain: 'Asks you to click a link to "resolve" a problem - a very common trick.' },
+    { term: 'kyc',           explain: 'Asks you to update KYC details through a link - always do this via your bank\'s official app or branch instead.' },
+    { term: 'winning',       explain: 'Tells you that you are a "winner" out of nowhere.' },
+    { term: 'blocked',       explain: 'Says your account/SIM/card is already blocked to create panic.' },
+    { term: 'verify immediately', explain: 'Pressures you to "verify" your details immediately.' },
+    { term: 'digital arrest',explain: 'Mentions a "digital arrest" - this is always a scam. Police never arrest anyone over a phone call.' }
+  ];
+
+  // Single-word roots checked again with typo/spelling-mistake tolerance,
+  // so slightly misspelled scam words (by the sender OR a typo when pasting)
+  // still get caught, e.g. "urgnt", "0TP", "susspend", "lotary".
+  const FUZZY_ROOTS = [
+    { root: 'otp',     explain: 'Contains a word very close to "OTP" (possibly misspelled) - banks never ask for this.' },
+    { root: 'urgent',  explain: 'Contains a word very close to "urgent" - even misspelled, it is still a pressure tactic.' },
+    { root: 'suspend', explain: 'Contains a word very close to "suspend/suspended" - a common scare tactic about your account.' },
+    { root: 'lottery', explain: 'Contains a word very close to "lottery" - be cautious of unexpected prize claims.' },
+    { root: 'kyc',     explain: 'Contains a word very close to "KYC" - always update this only via your bank\'s official app or branch.' },
+    { root: 'blocked', explain: 'Contains a word very close to "blocked" - designed to create panic about your account.' },
+    { root: 'arrest',  explain: 'Contains a word very close to "arrest" - real police never arrest you over a phone call.' },
+    { root: 'winner',  explain: 'Contains a word very close to "winner/winning" - a common prize scam trick.' },
+    { root: 'verify',  explain: 'Contains a word very close to "verify" - often used to rush you into giving details.' }
+  ];
+
+  // Domains commonly used to hide the real destination of a scam link
+  const SHORTENER_DOMAINS = ['bit.ly','tinyurl.com','goo.gl','t.co','is.gd','cutt.ly','rebrand.ly','shorturl.at'];
+  // Endings frequently seen in throwaway scam websites
+  const SUSPICIOUS_TLDS = ['xyz','top','info','click','loan','tk','ga','cf','ml','link','work','support'];
+
+  const URL_REGEX = /((https?:\/\/)|(www\.))[^\s]+/gi;
+
+  const input = document.getElementById('messageInput');
+  const checkBtn = document.getElementById('checkBtn');
+  const resultBox = document.getElementById('resultBox');
+  const badge = document.getElementById('resultBadge');
+  const reasonsList = document.getElementById('resultReasons');
+
+  // Standard edit-distance calculation - counts how many single-character
+  // changes separate two words. A small number means "very close spelling".
+  function levenshtein(a, b){
+    const dp = [];
+    for (let i = 0; i <= a.length; i++){ dp.push([i]); }
+    for (let j = 0; j <= b.length; j++){ dp[0][j] = j; }
+    for (let i = 1; i <= a.length; i++){
+      for (let j = 1; j <= b.length; j++){
+        dp[i][j] = a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+    return dp[a.length][b.length];
+  }
+
+  // Normalises common scammer tricks (numbers standing in for letters,
+  // stray symbols) before we compare words letter-by-letter.
+  function normalizeForFuzzy(text){
+    return text
+      .toLowerCase()
+      .replace(/0/g, 'o')
+      .replace(/1/g, 'i')
+      .replace(/3/g, 'e')
+      .replace(/4/g, 'a')
+      .replace(/5/g, 's')
+      .replace(/@/g, 'a')
+      .replace(/\$/g, 's')
+      .replace(/[^a-z\s]/g, ' ');
+  }
+
+  function findExactReasons(text){
+    const lower = text.toLowerCase();
+    const reasons = [];
+    KEYWORDS.forEach(function(k){
+      if (lower.includes(k.term)) reasons.push(k.explain);
+    });
+    return reasons;
+  }
+
+  function findFuzzyReasons(text){
+    const words = normalizeForFuzzy(text).split(/\s+/).filter(Boolean);
+    const reasons = [];
+    words.forEach(function(word){
+      FUZZY_ROOTS.forEach(function(fr){
+        if (word === fr.root) return; // exact spelling already caught above
+        const maxDistance = fr.root.length <= 5 ? 1 : 2; // stricter tolerance for short words
+        if (Math.abs(word.length - fr.root.length) <= maxDistance &&
+            levenshtein(word, fr.root) <= maxDistance){
+          reasons.push(fr.explain);
+        }
+      });
+    });
+    return reasons;
+  }
+
+  function findUrlReasons(text){
+    const reasons = [];
+    const urls = text.match(URL_REGEX) || [];
+    const hasSuspiciousUrl = urls.some(function(url){
+      const u = url.toLowerCase();
+      return SHORTENER_DOMAINS.some(function(d){ return u.includes(d); }) ||
+             SUSPICIOUS_TLDS.some(function(tld){ return u.includes('.' + tld); });
+    });
+    if (hasSuspiciousUrl){
+      reasons.push('Contains a shortened or unusual web link, often used to hide the real (fake) website.');
+    }
+    return reasons;
+  }
+
+  checkBtn.addEventListener('click', function(){
+    const text = input.value.trim();
+
+    if (!text){
+      badge.className = 'badge badge-danger';
+      badge.textContent = '⚠️ Please paste a message first';
+      reasonsList.innerHTML = '';
+      resultBox.classList.add('visible');
+      return;
+    }
+
+    // Combine exact, typo-tolerant, and link checks, then remove duplicates
+    const allReasons = findExactReasons(text)
+      .concat(findFuzzyReasons(text))
+      .concat(findUrlReasons(text));
+    const reasons = Array.from(new Set(allReasons));
+
+    if (reasons.length > 0){
+      badge.className = 'badge badge-danger';
+      badge.textContent = '⚠️ Scam Detected';
+    } else {
+      badge.className = 'badge badge-safe';
+      badge.textContent = '✅ Looks Safe';
+    }
+
+    reasonsList.innerHTML = '';
+    if (reasons.length > 0){
+      reasons.forEach(function(r){
+        const li = document.createElement('li');
+        li.textContent = r;
+        reasonsList.appendChild(li);
+      });
+    } else {
+      const li = document.createElement('li');
+      li.textContent = 'No common scam patterns found. Still, only click links or share details when you are fully sure who sent them.';
+      reasonsList.appendChild(li);
+    }
+
+    resultBox.classList.add('visible');
+  });
+
+  /* VOICE ASSISTANT - reads the current scan result aloud, including
+     the AI second opinion below if one has been generated. */
+  document.getElementById('readAloudBtn').addEventListener('click', function(){
+    let spokenText = 'Please check a message first by pressing Check Safety.';
+    if (resultBox.classList.contains('visible')){
+      const badgeText = badge.textContent.replace(/[⚠️✅]/g, '').trim();
+      const reasonTexts = Array.prototype.map.call(reasonsList.querySelectorAll('li'), function(li){
+        return li.textContent;
+      }).join('. ');
+      spokenText = badgeText + '. ' + reasonTexts;
+    }
+
+    const aiBox = document.getElementById('aiResultBox');
+    if (aiBox && aiBox.classList.contains('visible')){
+      const aiBadgeEl = document.getElementById('aiBadge');
+      const aiReasonsEl = document.getElementById('aiReasons');
+      const aiAdviceEl = document.getElementById('aiAdvice');
+      const aiBadgeText = aiBadgeEl.textContent.replace(/[⚠️✅ℹ️]/g, '').trim();
+      const aiReasonTexts = Array.prototype.map.call(aiReasonsEl.querySelectorAll('li'), function(li){
+        return li.textContent;
+      }).join('. ');
+      spokenText += '. ' + aiBadgeText + '. ' + aiReasonTexts + '. ' + aiAdviceEl.textContent;
+    }
+
+    speakText(spokenText);
+  });
+})();
+
+/* ----------------------------------------------------------------
+   C) AI DEEP SCAN - a smarter, second-opinion analysis engine
+   Runs entirely on this device using a larger, weighted rule-set
+   modelled on how AI scam-classifiers reason about a message
+   (multiple weak signals combined into one confidence score) -
+   rather than calling any outside AI service. Because nothing is
+   sent anywhere, it needs no internet connection and no dependency
+   on Claude or any other provider, so it keeps working any time
+   this page is opened, on any computer or phone, anywhere.
+---------------------------------------------------------------- */
+(function aiDeepScan(){
+  const URL_REGEX = /((https?:\/\/)|(www\.))[^\s]+/gi;
+  const input = document.getElementById('messageInput');
+  const aiBtn = document.getElementById('aiCheckBtn');
+  const aiResultBox = document.getElementById('aiResultBox');
+  const aiBadge = document.getElementById('aiBadge');
+  const aiReasons = document.getElementById('aiReasons');
+  const aiAdvice = document.getElementById('aiAdvice');
+
+  // Weighted signal categories - loosely mirrors the reasoning an AI
+  // fraud-classifier would use: no single word decides the verdict,
+  // several weak signals stacking up is what raises real risk.
+  const CATEGORIES = [
+    { weight: 25, test: /\botp\b|\bone[\s-]?time[\s-]?password\b/i,
+      reason: 'Asks for your OTP - no genuine bank or office ever needs this.' },
+    { weight: 25, test: /\bpin\b|\bcvv\b|\bcard\s*number\b|\baadhaa?r\b/i,
+      reason: 'Asks for a PIN, CVV, card, or ID number - never share these.' },
+    { weight: 20, test: /\barrest(ed)?\b|\blegal action\b|\bcourt\b|\bpolice case\b|\bdigital arrest\b/i,
+      reason: 'Threatens arrest or legal trouble to frighten you into acting fast.' },
+    { weight: 15, test: /\bsuspend(ed)?\b|\bblock(ed)?\b|\bfreeze\b|\bfrozen\b|\bdeactivat/i,
+      reason: 'Warns that your account or card will be suspended or blocked.' },
+    { weight: 15, test: /\burgent(ly)?\b|\bimmediately\b|\bright away\b|\bwithin\s+\d+\s*(hour|hr|min)/i,
+      reason: 'Uses urgent language to rush you before you can think it over.' },
+    { weight: 15, test: /\blottery\b|\bwon\b|\bwinner\b|\bprize\b|\bcashback\b|\bfree gift\b/i,
+      reason: 'Offers a prize or winnings for something you never entered.' },
+    { weight: 15, test: /\bkyc\b/i,
+      reason: 'Asks you to "update KYC" through a link - do this only via your bank\'s own app or branch.' },
+    { weight: 10, test: /\b(click|tap)\s+(the|this)?\s*link\b/i,
+      reason: 'Pushes you to click a link rather than visiting the site yourself.' },
+    { weight: 10, test: /\bremote access\b|\bteamviewer\b|\banydesk\b|\binstall this app\b/i,
+      reason: 'Asks you to install a remote-access app - this lets a stranger control your device.' },
+    { weight: 10, test: /\bdear (customer|user|sir|madam)\b|\bvalued customer\b/i,
+      reason: 'Uses a generic greeting instead of your real name - common in mass scam messages.' },
+    { weight: 10, test: /\b(registration|processing|admin(istration)?)\s*fee\b|\badvance payment\b/i,
+      reason: 'Asks you to pay a fee upfront - a common trick before the scammer disappears.' },
+    { weight: 5,  test: /!{2,}/,
+      reason: 'Uses multiple exclamation marks to create pressure or excitement.' },
+    { weight: 5,  test: /\b[A-Z]{6,}\b/,
+      reason: 'Uses long stretches of CAPITAL LETTERS to sound alarming.' }
+  ];
+
+  const SHORTENERS = ['bit.ly','tinyurl.com','goo.gl','t.co','is.gd','cutt.ly','rebrand.ly','shorturl.at'];
+  const SUSPICIOUS_TLDS = ['xyz','top','info','click','loan','tk','ga','cf','ml','link','work','support'];
+
+  // Scores a message the way an AI reviewer would: gather every
+  // signal that fires, weight it, then read the total back as a
+  // plain-English verdict, confidence level, and next-step advice.
+  function scanText(text){
+    let score = 0;
+    const reasons = [];
+
+    CATEGORIES.forEach(function(c){
+      if (c.test.test(text)){
+        score += c.weight;
+        reasons.push(c.reason);
+      }
+    });
+
+    const urls = text.match(URL_REGEX) || [];
+    const riskyUrl = urls.some(function(u){
+      const low = u.toLowerCase();
+      return SHORTENERS.some(function(d){ return low.includes(d); }) ||
+             SUSPICIOUS_TLDS.some(function(t){ return low.includes('.' + t); }) ||
+             /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(low);
+    });
+    if (riskyUrl){
+      score += 20;
+      reasons.push('Contains a shortened, unusual, or numeric web link that can hide the real destination.');
+    }
+
+    // Classic combination: a request for sensitive info PLUS pressure
+    // to act fast is the single strongest scam pattern, so it earns
+    // extra weight on top of the individual signals above.
+    const asksSensitive = /\botp\b|\bpin\b|\bcvv\b|\bpassword\b/i.test(text);
+    const pressures = /\burgent|\bimmediately|\barrest|\bsuspend/i.test(text);
+    if (asksSensitive && pressures) score += 15;
+
+    score = Math.min(100, score);
+
+    let verdict, confidence;
+    if (score >= 55){ verdict = 'scam'; confidence = 'high'; }
+    else if (score >= 30){ verdict = 'likely_scam'; confidence = 'medium'; }
+    else if (score >= 10){ verdict = 'uncertain'; confidence = 'low'; }
+    else { verdict = 'safe'; confidence = 'medium'; }
+
+    let advice;
+    if (verdict === 'scam') advice = 'Do not reply, click, or pay anything. Delete the message or block the sender.';
+    else if (verdict === 'likely_scam') advice = 'Treat this as unsafe - confirm independently using an official number before doing anything.';
+    else if (verdict === 'uncertain') advice = 'Be cautious - check with a trusted family member before clicking or replying.';
+    else advice = 'No major warning signs found, but always stay alert with unexpected messages.';
+
+    if (reasons.length === 0){
+      reasons.push('No known scam patterns were matched in this message.');
+    }
+
+    return { verdict: verdict, confidence: confidence, reasons: reasons.slice(0, 6), advice: advice };
+  }
+
+  function setLoading(isLoading){
+    aiBtn.disabled = isLoading;
+    aiBtn.textContent = isLoading ? '🤖 Analysing…' : '🤖 AI Deep Scan';
+  }
+
+  function showAiMessage(badgeClass, badgeText, message){
+    aiBadge.className = 'badge ' + badgeClass;
+    aiBadge.textContent = badgeText;
+    aiReasons.innerHTML = '';
+    const li = document.createElement('li');
+    li.textContent = message;
+    aiReasons.appendChild(li);
+    aiAdvice.textContent = '';
+    aiResultBox.classList.add('visible');
+  }
+
+  aiBtn.addEventListener('click', function(){
+    const text = input.value.trim();
+    if (!text){
+      showAiMessage('badge-warning', 'ℹ️ Nothing to check yet', 'Please paste a message first, then try AI Deep Scan again.');
+      return;
+    }
+
+    setLoading(true);
+    aiResultBox.classList.remove('visible');
+
+    // Brief pause so the result feels considered - the scan itself
+    // runs instantly, fully on this device, every single time.
+    setTimeout(function(){
+      const result = scanText(text);
+
+      let badgeClass, badgeLabel;
+      if (result.verdict === 'scam'){
+        badgeClass = 'badge-danger'; badgeLabel = '⚠️ AI Thinks: Likely Scam';
+      } else if (result.verdict === 'likely_scam'){
+        badgeClass = 'badge-danger'; badgeLabel = '⚠️ AI Thinks: Probably Unsafe';
+      } else if (result.verdict === 'uncertain'){
+        badgeClass = 'badge-warning'; badgeLabel = 'ℹ️ AI Thinks: Not Sure - Be Careful';
+      } else {
+        badgeClass = 'badge-safe'; badgeLabel = '✅ AI Thinks: Looks Safe';
+      }
+
+      aiBadge.className = 'badge ' + badgeClass;
+      aiBadge.textContent = badgeLabel;
+
+      aiReasons.innerHTML = '';
+      result.reasons.forEach(function(r){
+        const li = document.createElement('li');
+        li.textContent = r;
+        aiReasons.appendChild(li);
+      });
+
+      aiAdvice.textContent = result.advice;
+      aiResultBox.classList.add('visible');
+      setLoading(false);
+    }, 600);
+  });
+})();
+
+/* ----------------------------------------------------------------
+   D) PASSWORD HEALTH CHECKER - fully on-device, nothing transmitted
+---------------------------------------------------------------- */
+(function passwordChecker(){
+  const COMMON_PASSWORDS = [
+    'password','123456','123456789','12345678','12345','1234567','qwerty',
+    'abc123','password1','111111','123123','admin','letmein','welcome',
+    'monkey','football','iloveyou','000000','1234','sunshine','princess',
+    'dragon','baseball','master','login','starwars'
+  ];
+
+  const input = document.getElementById('passwordInput');
+  const toggleBtn = document.getElementById('togglePasswordBtn');
+  const checkBtn = document.getElementById('checkPasswordBtn');
+  const resultBox = document.getElementById('passwordResultBox');
+  const badge = document.getElementById('passwordBadge');
+  const barFill = document.getElementById('passwordBarFill');
+  const tipsList = document.getElementById('passwordTips');
+  const readAloudBtn = document.getElementById('passwordReadAloudBtn');
+
+  toggleBtn.addEventListener('click', function(){
+    const showing = input.type === 'text';
+    input.type = showing ? 'password' : 'text';
+    toggleBtn.textContent = showing ? '👁️ Show' : '🙈 Hide';
+    toggleBtn.setAttribute('aria-pressed', String(!showing));
+  });
+
+  // Flags obvious repeated characters ("aaaaaa") or simple runs from a
+  // keyboard/alphabet/number sequence ("1234", "abcd", "qwerty").
+  function hasRepeatedOrSequential(pw){
+    const lower = pw.toLowerCase();
+    if (/(.)\1{3,}/.test(lower)) return true;
+
+    const sequences = ['0123456789', '9876543210', 'abcdefghijklmnopqrstuvwxyz',
+                        'zyxwvutsrqponmlkjihgfedcba', 'qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+    for (let i = 0; i < sequences.length; i++){
+      for (let start = 0; start + 4 <= sequences[i].length; start++){
+        if (lower.includes(sequences[i].substring(start, start + 4))) return true;
+      }
+    }
+    return false;
+  }
+
+  function evaluatePassword(pw){
+    const lower = pw.toLowerCase();
+    const tips = [];
+    let score = 0;
+
+    // Length: up to 40 points, full marks at 16+ characters
+    score += (Math.min(pw.length, 16) / 16) * 40;
+    if (pw.length < 12) tips.push('Make it at least 12 characters long - longer passwords are much harder to guess.');
+
+    // Character variety: 15 points each for four character types
+    const hasUpper = /[A-Z]/.test(pw);
+    const hasLower = /[a-z]/.test(pw);
+    const hasNumber = /[0-9]/.test(pw);
+    const hasSpecial = /[^A-Za-z0-9]/.test(pw);
+    if (hasUpper) score += 15; else tips.push('Add at least one capital letter (A-Z).');
+    if (hasLower) score += 15; else tips.push('Add at least one lowercase letter (a-z).');
+    if (hasNumber) score += 15; else tips.push('Add at least one number (0-9).');
+    if (hasSpecial) score += 15; else tips.push('Add a symbol like ! or @ or # for extra strength.');
+
+    // Heavy penalty for well-known weak passwords or predictable patterns
+    if (COMMON_PASSWORDS.indexOf(lower) !== -1){
+      score = 5;
+      tips.unshift('This is one of the most commonly used passwords - it can be guessed in seconds. Please choose something more unique.');
+    } else if (hasRepeatedOrSequential(pw)){
+      score = Math.max(0, score - 30);
+      tips.push('Avoid repeating the same character or using simple sequences like "1234" or "abcd".');
+    }
+
+    return { score: Math.max(0, Math.min(100, Math.round(score))), tips: tips };
+  }
+
+  checkBtn.addEventListener('click', function(){
+    const pw = input.value;
+
+    if (!pw){
+      badge.className = 'badge badge-danger';
+      badge.textContent = '⚠️ Please type a password first';
+      tipsList.innerHTML = '';
+      barFill.style.width = '0%';
+      resultBox.classList.add('visible');
+      return;
+    }
+
+    const result = evaluatePassword(pw);
+    let label, badgeClass;
+    if (result.score < 40){ label = 'Weak'; badgeClass = 'badge-danger'; }
+    else if (result.score < 70){ label = 'Medium'; badgeClass = 'badge-warning'; }
+    else { label = 'Strong'; badgeClass = 'badge-safe'; }
+
+    badge.className = 'badge ' + badgeClass;
+    badge.textContent = (result.score < 40 ? '⚠️ ' : '✅ ') + label + ' Password';
+
+    barFill.style.width = result.score + '%';
+    barFill.style.background = scoreColor(result.score);
+
+    tipsList.innerHTML = '';
+    if (result.tips.length > 0){
+      result.tips.forEach(function(t){
+        const li = document.createElement('li');
+        li.textContent = t;
+        tipsList.appendChild(li);
+      });
+    } else {
+      const li = document.createElement('li');
+      li.textContent = 'Great job - this password follows all the basic safety rules.';
+      tipsList.appendChild(li);
+    }
+
+    resultBox.classList.add('visible');
+  });
+
+  readAloudBtn.addEventListener('click', function(){
+    let text = 'Please check a password first.';
+    if (resultBox.classList.contains('visible')){
+      const badgeText = badge.textContent.replace(/[⚠️✅]/g, '').trim();
+      const tipTexts = Array.prototype.map.call(tipsList.querySelectorAll('li'), function(li){
+        return li.textContent;
+      }).join('. ');
+      text = badgeText + '. ' + tipTexts;
+    }
+    speakText(text);
+  });
+})();
+
+/* ----------------------------------------------------------------
+   E) DIGITAL SAFETY METER
+---------------------------------------------------------------- */
+(function safetyMeter(){
+  const checkboxes = document.querySelectorAll('#checklist input[type="checkbox"]');
+  const fillRect = document.getElementById('meterFill');
+  const scoreText = document.getElementById('scoreText');
+  const VIEWBOX_HEIGHT = 120;
+
+  function updateMeter(){
+    let score = 0;
+    checkboxes.forEach(function(box){
+      if (box.checked) score += Number(box.dataset.points);
+    });
+
+    const fillHeight = (score / 100) * VIEWBOX_HEIGHT;
+    fillRect.setAttribute('y', VIEWBOX_HEIGHT - fillHeight);
+    fillRect.setAttribute('height', fillHeight);
+    fillRect.setAttribute('fill', scoreColor(score));
+
+    scoreText.innerHTML = score + '<span>/100</span>';
+  }
+
+  checkboxes.forEach(function(box){
+    box.addEventListener('change', updateMeter);
+  });
+
+  document.getElementById('checklistReadAloudBtn').addEventListener('click', function(){
+    const items = Array.prototype.map.call(document.querySelectorAll('#checklist label'), function(l){
+      return l.textContent;
+    });
+    speakText('Here are the safety checklist items. ' + items.join('. '));
+  });
+
+  updateMeter(); // set initial 0/100 state
+})();
+
+/* ----------------------------------------------------------------
+   F) 1-MINUTE SAFETY QUIZ (9 questions; answers now auto-read aloud)
+---------------------------------------------------------------- */
+(function safetyQuiz(){
+  const QUESTIONS = [
+    {
+      question: 'A caller pretending to be your grandchild in trouble, asking for urgent money, could be a scam.',
+      answer: true,
+      explanation: 'This is called the "grandparent scam." Always hang up and call your family member directly on a number you already know before sending any money.'
+    },
+    {
+      question: 'Your bank will call and ask you to share your OTP to "verify" a transaction.',
+      answer: false,
+      explanation: 'Real banks never ask for your OTP over a phone call, SMS, or email. Anyone who asks is trying to steal your money.'
+    },
+    {
+      question: 'You can report cyber fraud anywhere in India by calling 1930.',
+      answer: true,
+      explanation: '1930 is India\'s National Cyber Crime Helpline. It is worth saving in your phone right now.'
+    },
+    {
+      question: 'If a caller claims police will arrest you unless you pay immediately, this is always genuine.',
+      answer: false,
+      explanation: 'This is a "digital arrest" scam. Real police never demand money over a phone or video call.'
+    },
+    {
+      question: 'A message asking you to click a link to track a delivery you never ordered is safe to click.',
+      answer: false,
+      explanation: 'This is a common delivery scam. Do not click - check directly with the courier company if you are unsure.'
+    },
+    {
+      question: 'It is safe to install an app someone asks you to download so they can "help fix" your phone or computer remotely.',
+      answer: false,
+      explanation: 'This is a fake tech-support scam. Remote-access apps let strangers control your device and see your banking apps.'
+    },
+    {
+      question: 'A padlock icon and "https" in a website address means the site is completely guaranteed to be genuine.',
+      answer: false,
+      explanation: 'It only means the connection is encrypted, not that the site is trustworthy - fake sites can have this too. Always check the website name carefully.'
+    },
+    {
+      question: 'You should never share your ATM PIN, even with someone claiming to be a bank employee visiting your home.',
+      answer: true,
+      explanation: 'Bank employees never ask for your PIN, card, or OTP in person or over the phone.'
+    },
+    {
+      question: 'A work-from-home job offer that asks you to pay a "registration fee" first is a common scam.',
+      answer: true,
+      explanation: 'Genuine employers never ask you to pay money to get a job.'
+    }
+  ];
+
+  let index = 0;
+  let correctCount = 0;
+  let answered = false;
+
+  const progressEl = document.getElementById('quizProgress');
+  const questionEl = document.getElementById('quizQuestion');
+  const trueBtn = document.getElementById('trueBtn');
+  const falseBtn = document.getElementById('falseBtn');
+  const feedbackEl = document.getElementById('quizFeedback');
+  const feedbackHeading = document.getElementById('feedbackHeading');
+  const feedbackExplanation = document.getElementById('feedbackExplanation');
+  const nextBtn = document.getElementById('nextQuestionBtn');
+  const quizActive = document.getElementById('quizActive');
+  const quizSummary = document.getElementById('quizSummary');
+  const finalScoreEl = document.getElementById('finalScore');
+  const restartBtn = document.getElementById('restartQuizBtn');
+  const readAloudBtn = document.getElementById('quizReadAloudBtn');
+  const answerReadAloudBtn = document.getElementById('answerReadAloudBtn');
+
+  function renderQuestion(){
+    const q = QUESTIONS[index];
+    progressEl.textContent = 'Question ' + (index + 1) + ' of ' + QUESTIONS.length;
+    questionEl.textContent = q.question;
+    feedbackEl.classList.remove('visible', 'correct', 'incorrect');
+    trueBtn.disabled = false;
+    falseBtn.disabled = false;
+    answered = false;
+  }
+
+  function handleAnswer(userAnswer){
+    if (answered) return; // prevent double-scoring on repeated clicks
+    answered = true;
+
+    const q = QUESTIONS[index];
+    const isCorrect = userAnswer === q.answer;
+    if (isCorrect) correctCount++;
+
+    feedbackEl.classList.add('visible', isCorrect ? 'correct' : 'incorrect');
+    feedbackHeading.textContent = isCorrect ? '✔️ Correct!' : '✖️ Not quite.';
+    feedbackExplanation.textContent = q.explanation;
+
+    // Automatically read the answer + explanation aloud, so the lesson
+    // lands even for anyone who finds reading small text difficult.
+    speakText((isCorrect ? 'Correct. ' : 'Not quite. ') + q.explanation);
+
+    trueBtn.disabled = true;
+    falseBtn.disabled = true;
+    nextBtn.focus();
+  }
+
+  trueBtn.addEventListener('click', function(){ handleAnswer(true); });
+  falseBtn.addEventListener('click', function(){ handleAnswer(false); });
+
+  nextBtn.addEventListener('click', function(){
+    index++;
+    if (index < QUESTIONS.length){
+      renderQuestion();
+    } else {
+      quizActive.style.display = 'none';
+      quizSummary.classList.add('visible');
+      finalScoreEl.textContent = correctCount + ' out of ' + QUESTIONS.length + ' correct';
+    }
+  });
+
+  restartBtn.addEventListener('click', function(){
+    index = 0;
+    correctCount = 0;
+    quizActive.style.display = '';
+    quizSummary.classList.remove('visible');
+    renderQuestion();
+  });
+
+  /* Manual read aloud - reads the question, and the feedback/explanation
+     too once the question has been answered (useful to hear it again). */
+  readAloudBtn.addEventListener('click', function(){
+    let text = questionEl.textContent;
+    if (feedbackEl.classList.contains('visible')){
+      const heading = feedbackHeading.textContent.replace(/[✔️✖️]/g, '').trim();
+      text += '. ' + heading + '. ' + feedbackExplanation.textContent;
+    }
+    speakText(text);
+  });
+
+  /* Dedicated "Read Answer Aloud" button that sits right before
+     Next Question, so the explanation just given can be replayed
+     on demand before moving on to the next question. */
+  answerReadAloudBtn.addEventListener('click', function(){
+    const heading = feedbackHeading.textContent.replace(/[✔️✖️]/g, '').trim();
+    speakText(heading + '. ' + feedbackExplanation.textContent);
+  });
+
+  renderQuestion(); // show the first question on load
+})();
+
+/* ----------------------------------------------------------------
+   G) READ ALOUD ON EVERY PARAGRAPH & ANSWER
+   The interactive tools above already have their own dedicated
+   "Read Aloud" buttons for their results. This module adds a small
+   🔊 button to every remaining plain paragraph, safety tip, and
+   cross-question answer on the page, so any single piece of
+   writing - not just tool results - can be listened to on its own.
+   Works fully on-device, same as everything else on this page.
+---------------------------------------------------------------- */
+(function readAloudEverywhere(){
+  function attachSpeakButton(el, label){
+    if (!el || el.dataset.speakAttached) return;
+    const text = el.textContent.trim();
+    if (!text) return;
+    el.dataset.speakAttached = 'true';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'speak-btn';
+    btn.setAttribute('aria-label', label);
+    btn.textContent = '🔊';
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      e.stopPropagation(); // never toggle a parent <details> etc.
+      speakText(text);
+    });
+    el.appendChild(btn);
+  }
+
+  // Plain paragraphs and tips - each button reads just that element
+  const plainSelectors = [
+    '.hero .tagline',
+    '.section-sub',
+    '.field-hint',
+    '.facts-list li',
+    'footer p'
+  ];
+  plainSelectors.forEach(function(sel){
+    document.querySelectorAll(sel).forEach(function(el){
+      attachSpeakButton(el, 'Read this aloud');
+    });
+  });
+
+  // Cross-question answers inside the collapsible "why it matters" panels
+  document.querySelectorAll('.cross-item p').forEach(function(el){
+    attachSpeakButton(el, 'Read this answer aloud');
+  });
+})();
+</script>
+
+</body>
+</html>
